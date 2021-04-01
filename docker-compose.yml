@@ -1,0 +1,140 @@
+version: '3.3'
+
+services:
+  task:
+    build: .
+    container_name: task
+    image: bruno/task
+    command: npm run dev:watch
+    environment:
+      - DATABASE_NAME=postgres
+      - DATABASE_USERNAME=postgres
+      - DATABASE_PASSWORD=123Mudar
+      - DATABASE_HOST=postgres
+      - DATABASE_PORT=5432
+      - DATABASE_DIALECT=postgres
+    volumes:
+      - .:/task
+      - /task/node_modules
+    depends_on:
+      - postgres
+    networks:
+      - private
+
+  postgres:
+    container_name: postgres
+    image: postgres:12.3
+    ports:
+      - 5432:5432
+    environment:
+      - POSTGRES_PASSWORD=123Mudar
+    command: [ "postgres", "-c", "wal_level=logical" ]
+    networks:
+      - private
+
+  migrate:
+    container_name: migrate
+    build: .
+    image: bruno/migrate
+    command: node_modules/.bin/sequelize db:migrate --config src/configs/postgres.js --migrations-path src/ports/database/postgres/migrations
+    environment:
+      - DATABASE_NAME=postgres
+      - DATABASE_USERNAME=postgres
+      - DATABASE_PASSWORD=123Mudar
+      - DATABASE_HOST=postgres
+      - DATABASE_PORT=5432
+      - DATABASE_DIALECT=postgres
+    volumes:
+      - .:/task
+      - /task/node_modules
+    depends_on:
+      - postgres
+    links:
+      - postgres
+    networks:
+      - private
+
+  zookeeper:
+    container_name: zookeeper
+    image: debezium/zookeeper:1.4
+    ports:
+      - 2181:2181
+      - 2888:2888
+      - 3888:3888
+    networks:
+      - private
+
+  kafka:
+    container_name: kafka
+    image: debezium/kafka:1.4
+    ports:
+      - 9092:9092
+    links:
+      - zookeeper
+    environment:
+      - ZOOKEEPER_CONNECT=zookeeper:2181
+    networks:
+      - private
+
+  debezium-connect:
+    container_name: debezium-connect
+    image: debezium/connect:1.4
+    ports:
+      - 8083:8083
+    links:
+      - kafka
+      - postgres
+    depends_on:
+      - postgres
+      - kafka
+    environment:
+      - BOOTSTRAP_SERVERS=kafka:9092
+      - GROUP_ID=1
+      - CONFIG_STORAGE_TOPIC=my_connect_configs
+      - OFFSET_STORAGE_TOPIC=my_connect_offsets
+      - STATUS_STORAGE_TOPIC=my_connect_statuses
+    networks:
+      - private
+
+  elasticsearch:
+    container_name: elasticsearch
+    image: elasticsearch:6.5.4
+    ports:
+      - 9200:9200
+    environment:
+      - discovery.type=single-node
+    networks:
+      - private
+
+  elasticsearch-connect:
+    container_name: elasticsearch-connect
+    image: confluentinc/cp-kafka-connect
+    ports:
+      - 8084:8083
+    volumes:
+      - $PWD/connect-plugins:/connect-plugins
+    environment:
+      - CONNECT_BOOTSTRAP_SERVERS= kafka:9092
+      - CONNECT_REST_ADVERTISED_HOST_NAME= elasticsearch-connect
+      # - CONNECT_REST_PORT: 8083
+      - CONNECT_GROUP_ID= 1
+      - CONNECT_CONFIG_STORAGE_TOPIC=my_connect_configs
+      - CONNECT_OFFSET_STORAGE_TOPIC=my_connect_offsets
+      - CONNECT_STATUS_STORAGE_TOPIC=my_connect_statuses
+      - CONNECT_KEY_CONVERTER= io.confluent.connect.avro.AvroConverter
+      # - CONNECT_KEY_CONVERTER_SCHEMA_REGISTRY_URL: http://schema-registry:8081
+      - CONNECT_VALUE_CONVERTER= io.confluent.connect.avro.AvroConverter
+      # - CONNECT_VALUE_CONVERTER_SCHEMA_REGISTRY_URL: http://schema-registry:8081
+      # - CONNECT_INTERNAL_KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      # - CONNECT_INTERNAL_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      - CONNECT_ZOOKEEPER_CONNECT= "zookeeper:2181"
+      - CONNECT_PLUGIN_PATH= /connect-plugins
+    depends_on:
+      - kafka
+      - elasticsearch
+    networks:
+      - private
+
+networks:
+  private:
+    driver: bridge

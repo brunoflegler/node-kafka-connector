@@ -1,0 +1,38 @@
+{
+  "name": "task-kafka-connector",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node ./src/index.js",
+    "dev": "npm run dev:run",
+    "dev:watch": "npm run dev:run",
+    "dev:run": "nodemon src/index.js",
+    "lint": "eslint 'src/**/*.js'"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "awilix": "^4.3.1",
+    "date-fns": "^2.16.1",
+    "dotenv": "^8.2.0",
+    "escriba": "^2.10.0",
+    "log4js": "^6.3.0",
+    "pg": "^8.5.1",
+    "sequelize": "^6.4.0",
+    "uuid": "^8.3.2"
+  },
+  "devDependencies": {
+    "eslint": "^5.16.0",
+    "eslint-config-prettier": "^6.0.0",
+    "eslint-config-standard": "^13.0.1",
+    "eslint-plugin-import": "^2.18.0",
+    "eslint-plugin-node": "^9.1.0",
+    "eslint-plugin-prettier": "^3.1.0",
+    "eslint-plugin-promise": "^4.2.1",
+    "eslint-plugin-standard": "^4.0.0",
+    "nodemon": "^2.0.7",
+    "prettier": "^1.18.2",
+    "sequelize-cli": "^6.2.0"
+  }
+}
